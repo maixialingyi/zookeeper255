@@ -91,8 +91,7 @@ public class FileTxnSnapLog {
         // by default create snap/log dirs, but otherwise complain instead
         // See ZOOKEEPER-1161 for more details
         boolean enableAutocreate = Boolean.valueOf(
-                System.getProperty(ZOOKEEPER_DATADIR_AUTOCREATE,
-                        ZOOKEEPER_DATADIR_AUTOCREATE_DEFAULT));
+                System.getProperty(ZOOKEEPER_DATADIR_AUTOCREATE,ZOOKEEPER_DATADIR_AUTOCREATE_DEFAULT));
 
         if (!this.dataDir.exists()) {
             if (!enableAutocreate) {

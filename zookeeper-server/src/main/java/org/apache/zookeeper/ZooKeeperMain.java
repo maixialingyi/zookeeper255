@@ -76,10 +76,11 @@ import org.apache.zookeeper.admin.ZooKeeperAdmin;
 @InterfaceAudience.Public
 public class ZooKeeperMain {
     private static final Logger LOG = LoggerFactory.getLogger(ZooKeeperMain.class);
+    //指令集合
     static final Map<String,String> commandMap = new HashMap<String,String>( );
-    static final Map<String,CliCommand> commandMapCli =
-            new HashMap<String,CliCommand>( );
-
+    //指令集合
+    static final Map<String,CliCommand> commandMapCli = new HashMap<String,CliCommand>( );
+    //指令存储类
     protected MyCommandOptions cl = new MyCommandOptions();
     protected HashMap<Integer,String> history = new HashMap<Integer,String>( );
     protected int commandCount = 0;
@@ -160,7 +161,7 @@ public class ZooKeeperMain {
 
         public MyCommandOptions() {
           options.put("server", "localhost:2181");
-          options.put("timeout", "30000");
+          options.put("timeout", "300000");
         }
 
         public String getOption(String opt) {
@@ -297,6 +298,7 @@ public class ZooKeeperMain {
     public ZooKeeperMain(String args[]) throws IOException, InterruptedException {
         cl.parseOptions(args);
         System.out.println("Connecting to " + cl.getOption("server"));
+        //构造一个ZooKeeper对象，同ZooKeeperServer进行建立通信连接
         connectToZK(cl.getOption("server"));
     }
 

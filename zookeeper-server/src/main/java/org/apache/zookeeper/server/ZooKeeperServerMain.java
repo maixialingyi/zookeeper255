@@ -117,32 +117,33 @@ public class ZooKeeperServerMain {
         LOG.info("Starting server");
         FileTxnSnapLog txnLog = null;
         try {
-            // Note that this thread isn't going to be doing anything else,
-            // so rather than spawning another thread, we will just call
-            // run() in this thread.
-            // create a file logger url from the command line args
+            //FileTxnSnapLog是zookeeper上层服务器和底层数据存储的对接层，提供操作事务日志和快照的接口
             txnLog = new FileTxnSnapLog(config.dataLogDir, config.dataDir);
-            final ZooKeeperServer zkServer = new ZooKeeperServer(txnLog,
-                    config.tickTime, config.minSessionTimeout, config.maxSessionTimeout, null);
+            final ZooKeeperServer zkServer = new ZooKeeperServer(txnLog,config.tickTime, config.minSessionTimeout, config.maxSessionTimeout, null);
+            //ServerStats是服务器运行的统计器，包含最基本的运行时信息,ZooKeeperServer实现了ServerStats.Provider接口
             txnLog.setServerStats(zkServer.serverStats());
 
-            // Registers shutdown handler which will be used to know the
-            // server error or shutdown state changes.
             final CountDownLatch shutdownLatch = new CountDownLatch(1);
             zkServer.registerServerShutdownHandler(
                     new ZooKeeperServerShutdownHandler(shutdownLatch));
 
-            // Start Admin server
+            // AdminServer主要是用来接收一些执行命令的请求，默认实现为JettyAdminServer，默认暴露端口为8080，
+            // 可通过http://<hostname>:8080/commands/<commandname>的方式访问
             adminServer = AdminServerFactory.createAdminServer();
             adminServer.setZooKeeperServer(zkServer);
             adminServer.start();
 
             boolean needStartZKServer = true;
             if (config.getClientPortAddress() != null) {
+
+                // 创建ServerCnxnFactory 默认实现为 NIOServerCnxnFactory
                 cnxnFactory = ServerCnxnFactory.createFactory();
+                // 创建线程数和机器硬件有关如:32核的机器默认为1个接收新连接的线程，1个会话校验线程，4个IO读写线程和64个IO数据处理线程
                 cnxnFactory.configure(config.getClientPortAddress(), config.getMaxClientCnxns(), false);
+                // 启动数据处理线程  从本地快照数据文件和事务日志文件中恢复本地数据
                 cnxnFactory.startup(zkServer);
                 // zkServer has been started. So we don't need to start it again in secureCnxnFactory.
+                // zkServer已启动。因此，我们不需要在secureCnxnFactory中再次启动它。
                 needStartZKServer = false;
             }
             if (config.getSecureClientPortAddress() != null) {

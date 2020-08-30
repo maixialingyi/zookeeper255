@@ -125,6 +125,7 @@ public class QuorumPeerMain {
             LOG.warn("Either no config or no quorum defined in config, running "
                     + " in standalone mode");
             // there is only server in the quorum -- run as standalone
+            //单机启动
             ZooKeeperServerMain.main(args);
         }
     }

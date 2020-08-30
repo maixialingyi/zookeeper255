@@ -66,8 +66,7 @@ public class WorkerService {
      * @param useAssignableThreads  whether the worker threads should be
      *                              individually assignable or not
      */
-    public WorkerService(String name, int numThreads,
-                         boolean useAssignableThreads) {
+    public WorkerService(String name, int numThreads, boolean useAssignableThreads) {
         this.threadNamePrefix = (name == null ? "" : name) + "Thread";
         this.numWorkerThreads = numThreads;
         this.threadsAreAssignable = useAssignableThreads;
@@ -178,8 +177,7 @@ public class WorkerService {
         DaemonThreadFactory(String name, int firstThreadNum) {
             threadNumber.set(firstThreadNum);
             SecurityManager s = System.getSecurityManager();
-            group = (s != null)? s.getThreadGroup() :
-                                 Thread.currentThread().getThreadGroup();
+            group = (s != null)? s.getThreadGroup() :Thread.currentThread().getThreadGroup();
             namePrefix = name + "-";
         }
 

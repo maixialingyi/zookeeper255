@@ -32,13 +32,19 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public class ServerStats {
     private static final Logger LOG = LoggerFactory.getLogger(ServerStats.class);
-
+    //从服务器启动开始，或最近一次重置服务端统计信息之后，服务端向客户端发送的响应包次数
     private long packetsSent;
+    //从服务器启动开始，或最近一次重置服务端统计信息之后，服务端从客户端接收的请求包次数
     private long packetsReceived;
+    //从服务器启动开始，或最近一次重置服务端统计信息之后，服务端请求处理的最大延时
     private long maxLatency;
+    //从服务器启动开始，或最近一次重置服务端统计信息之后，服务端请求处理的最小延时
     private long minLatency = Long.MAX_VALUE;
+    //从服务器启动开始，或最近一次重置服务端统计信息之后，服务端请求处理的总延时
     private long totalLatency = 0;
+    //从服务器启动开始，或最近一次重置服务端统计信息之后，服务端请求处理总次数
     private long count = 0;
+    //记录事务日志fsync刷盘的超过阈值时间的报警次数
     private AtomicLong fsyncThresholdExceedCount = new AtomicLong(0);
 
     private final BufferStats clientResponseStats = new BufferStats();

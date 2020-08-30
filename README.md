@@ -1,3 +1,23 @@
+单机服务端  ZooKeeperServerMain
+单机客户端  ZooKeeperMain      再控制台输入命令，调试
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # Apache ZooKeeper
 ![alt text](https://zookeeper.apache.org/images/zookeeper_small.gif "ZooKeeper")
 

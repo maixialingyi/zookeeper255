@@ -65,30 +65,28 @@ public class ClientCnxnSocketNIO extends ClientCnxnSocket {
      * @throws InterruptedException
      * @throws IOException
      */
-    void doIO(List<Packet> pendingQueue, ClientCnxn cnxn)
-      throws InterruptedException, IOException {
+    void doIO(List<Packet> pendingQueue, ClientCnxn cnxn)throws InterruptedException, IOException {
         SocketChannel sock = (SocketChannel) sockKey.channel();
         if (sock == null) {
             throw new IOException("Socket is null!");
         }
+        //管道可读
         if (sockKey.isReadable()) {
+            //先从Channel读4个字节，代表头
             int rc = sock.read(incomingBuffer);
             if (rc < 0) {
-                throw new EndOfStreamException(
-                        "Unable to read additional data from server sessionid 0x"
-                                + Long.toHexString(sessionId)
-                                + ", likely server has closed socket");
+                throw new EndOfStreamException("Unable to read additional data from server sessionid 0x"+ Long.toHexString(sessionId)+ ", likely server has closed socket");
             }
+            //管道有数据
             if (!incomingBuffer.hasRemaining()) {
                 incomingBuffer.flip();
                 if (incomingBuffer == lenBuffer) {
                     recvCount.getAndIncrement();
                     readLength();
-                } else if (!initialized) {
-                    readConnectResult();
-                    enableRead();
-                    if (findSendablePacket(outgoingQueue,
-                            sendThread.tunnelAuthInProgress()) != null) {
+                } else if (!initialized) {  //未初始化
+                    readConnectResult();// 读取连接结果
+                    enableRead();// Channel 可读
+                    if (findSendablePacket(outgoingQueue,sendThread.tunnelAuthInProgress()) != null) {
                         // Since SASL authentication has completed (if client is configured to do so),
                         // outgoing packets waiting in the outgoingQueue can now be sent.
                         enableWrite();
@@ -97,7 +95,7 @@ public class ClientCnxnSocketNIO extends ClientCnxnSocket {
                     incomingBuffer = lenBuffer;
                     updateLastHeard();
                     initialized = true;
-                } else {
+                } else {// 处理其他请求
                     sendThread.readResponse(incomingBuffer);
                     lenBuffer.clear();
                     incomingBuffer = lenBuffer;
@@ -105,9 +103,10 @@ public class ClientCnxnSocketNIO extends ClientCnxnSocket {
                 }
             }
         }
+        //管道可写
         if (sockKey.isWritable()) {
-            Packet p = findSendablePacket(outgoingQueue,
-                    sendThread.tunnelAuthInProgress());
+            // 获得packet
+            Packet p = findSendablePacket(outgoingQueue,sendThread.tunnelAuthInProgress());
 
             if (p != null) {
                 updateLastSend();
@@ -116,14 +115,21 @@ public class ClientCnxnSocketNIO extends ClientCnxnSocket {
                     if ((p.requestHeader != null) &&
                             (p.requestHeader.getType() != OpCode.ping) &&
                             (p.requestHeader.getType() != OpCode.auth)) {
+                        //如果不是 连接事件，不是ping 事件，不是 认证事件
                         p.requestHeader.setXid(cnxn.getXid());
                     }
+                    //序列化
                     p.createBB();
                 }
+                //将数据写入Channel
                 sock.write(p.bb);
+                // p.bb中如果没有内容 则表示发送成功
                 if (!p.bb.hasRemaining()) {
+                    //发送数+1
                     sentCount.getAndIncrement();
+                    //将该P从队列中移除
                     outgoingQueue.removeFirstOccurrence(p);
+                    //如果该事件不是连接事件，不是ping事件，不是认证事件， 则将他加入pending队列中
                     if (p.requestHeader != null
                             && p.requestHeader.getType() != OpCode.ping
                             && p.requestHeader.getType() != OpCode.auth) {
@@ -164,6 +170,7 @@ public class ClientCnxnSocketNIO extends ClientCnxnSocket {
             return null;
         }
         // If we've already starting sending the first packet, we better finish
+        //如果我们已经开始发送第一个数据包，则最好完成
         if (outgoingQueue.getFirst().bb != null || !tunneledAuthInProgres) {
             return outgoingQueue.getFirst();
         }
@@ -172,6 +179,8 @@ public class ClientCnxnSocketNIO extends ClientCnxnSocket {
         // This packet must be sent so that the SASL authentication process
         // can proceed, but all other packets should wait until
         // SASL authentication completes.
+        //由于正在进行客户端对服务器的身份验证，仅发送由primeConnection（）排队的空头数据包。
+        // 必须发送此数据包，以便可以继续进行SASL身份验证过程，但是所有其他数据包都应等待,SASL身份验证完成
         Iterator<Packet> iter = outgoingQueue.iterator();
         while (iter.hasNext()) {
             Packet p = iter.next();
@@ -271,17 +280,22 @@ public class ClientCnxnSocketNIO extends ClientCnxnSocket {
      */
     void registerAndConnect(SocketChannel sock, InetSocketAddress addr) 
     throws IOException {
+        //注册连接事件
         sockKey = sock.register(selector, SelectionKey.OP_CONNECT);
+        //发送连接
         boolean immediateConnect = sock.connect(addr);
         if (immediateConnect) {
+            //初始化连接事件
             sendThread.primeConnection();
         }
     }
     
     @Override
     void connect(InetSocketAddress addr) throws IOException {
+        // 创建一个非阻塞空SocketChannel
         SocketChannel sock = createSock();
         try {
+            //注册并且连接sock到辣个addr
            registerAndConnect(sock, addr);
       } catch (IOException e) {
             LOG.error("Unable to open socket to " + addr);
@@ -342,30 +356,34 @@ public class ClientCnxnSocketNIO extends ClientCnxnSocket {
     @Override
     void doTransport(int waitTimeOut, List<Packet> pendingQueue, ClientCnxn cnxn)
             throws IOException, InterruptedException {
+        //阻塞定时
         selector.select(waitTimeOut);
         Set<SelectionKey> selected;
         synchronized (this) {
             selected = selector.selectedKeys();
         }
-        // Everything below and until we get back to the select is
-        // non blocking, so time is effectively a constant. That is
-        // Why we just have to do this once, here
+        // Everything below and until we get back to the select is non blocking, so time is effectively a constant. That is Why we just have to do this once, here
+        // 下面的所有内容，直到我们返回到select为止，都是无阻塞的，因此时间实际上是一个常数。这就是为什么我们只需要在这里做一次
         updateNow();
         for (SelectionKey k : selected) {
             SocketChannel sc = ((SocketChannel) k.channel());
+            //如果之前连接没有立马连上，则在这里处理OP_CONNECT事件
             if ((k.readyOps() & SelectionKey.OP_CONNECT) != 0) {
                 if (sc.finishConnect()) {
                     updateLastSendAndHeard();
                     updateSocketAddresses();
                     sendThread.primeConnection();
                 }
+                //如果读写就位，则处理之
             } else if ((k.readyOps() & (SelectionKey.OP_READ | SelectionKey.OP_WRITE)) != 0) {
                 doIO(pendingQueue, cnxn);
             }
         }
+        //发送客户端对服务器验证
         if (sendThread.getZkState().isConnected()) {
-            if (findSendablePacket(outgoingQueue,
-                    sendThread.tunnelAuthInProgress()) != null) {
+            //找到连接Packet并且将他放到队列头
+            if (findSendablePacket(outgoingQueue,sendThread.tunnelAuthInProgress()) != null) {
+                //可写
                 enableWrite();
             }
         }

@@ -874,6 +874,7 @@ public class ZooKeeper implements AutoCloseable {
         this.clientConfig = clientConfig;
         watchManager = defaultWatchManager();
         watchManager.defaultWatcher = watcher;
+        //服务端IP port处理
         ConnectStringParser connectStringParser = new ConnectStringParser(
                 connectString);
         hostProvider = aHostProvider;
